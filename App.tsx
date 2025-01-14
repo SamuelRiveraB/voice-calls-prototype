@@ -81,8 +81,6 @@ const App = () => {
     if (inCall && !remoteStream) {
       console.warn("Remote stream is missing. Debugging...");
     }
-    console.log("remoteStream", remoteStream)
-    console.log("localStream", localStream)
   }, [inCall, remoteStream]);
 
   // Handle incoming offer
@@ -104,7 +102,7 @@ const App = () => {
   };
 
   // Handle incoming answer
-  const handleAnswer = async (answer: { answer: RTCSessionDescriptionInit } | null) => {
+  const handleAnswer = async (answer: { answer: RTCSessionDescription } | null) => {
     if (answer && answer.answer) {
       const { answer: sessionDescription } = answer;
 
@@ -147,7 +145,7 @@ const App = () => {
 
     peerConnection.ontrack = (event) => {
       console.log("Remote stream received", event.streams[0]);
-      setRemoteStream(event.streams[0]); // Update state to attach stream to audio element
+      setRemoteStream(event.streams[0]);
     };
 
     peerConnection.onicecandidate = (event) => {

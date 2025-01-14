@@ -6,10 +6,10 @@ import { MediaStream, RTCPeerConnection,
   RTCIceCandidate, mediaDevices } from 'react-native-webrtc';
 import io from 'socket.io-client';
 
-const socket = io("https://signaling-server-yoj5.onrender.com/"); // Connect to signaling servers
+const socket = io("https://signaling-server-yoj5.onrender.com/"); // Connect to signaling server
 const userId = "mobileUser132145"
 
-const WebRTCApp = () => {
+const App = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [isCalling, setIsCalling] = useState(false);
@@ -21,21 +21,6 @@ const WebRTCApp = () => {
   const iceCandidateQueue = useRef<RTCIceCandidateInit[]>([]); // Queue for storing ICE candidates
 
   useEffect(() => {
-    // Request permission for microphone
-    const requestPermission = async () => {
-      try {
-        const { status } = await Audio.requestPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Permission to access microphone is required!');
-          return;
-        }
-      } catch (error) {
-        console.error('Error requesting permission:', error);
-      }
-    };
-
-    requestPermission();
-
     // Register this client with the signaling server
     socket.emit("register", { userId });
     console.log(`User ${userId} registered.`);
@@ -69,6 +54,21 @@ const WebRTCApp = () => {
       }
     });
 
+    // Request permission for microphone
+    const requestPermission = async () => {
+      try {
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          alert('Permission to access microphone is required!');
+          return;
+        }
+      } catch (error) {
+        console.error('Error requesting permission:', error);
+      }
+    };
+
+    requestPermission();
+
     const getUserMedia = async () => {
       const constraints = { audio: true, video: false };
       try {
@@ -78,16 +78,15 @@ const WebRTCApp = () => {
           console.error("No audio tracks found.");
           return;
         }
-  
-        console.log("Audio track acquired:", stream.getAudioTracks());
+
         setLocalStream(stream);
-        console.log("Local stream state updated:", stream);
+        console.log("Local stream obtained.");
       } catch (err) {
-        console.error('Failed to get user media:', err);
+        console.error("Failed to get user media:", err);
       }
     };
 
-    getUserMedia()
+    getUserMedia();
 
     return () => {
       socket.off("peer-list");
@@ -99,30 +98,11 @@ const WebRTCApp = () => {
     };
   }, []);
 
-  
-
   useEffect(() => {
     if (inCall && !remoteStream) {
       console.warn("Remote stream is missing. Debugging...");
     }
   }, [inCall, remoteStream]);
-
-  useEffect(() => {
-    if (localStream) {
-      console.log("Local Stream:", localStream);
-      localStream.getTracks().forEach((track) => {
-        console.log(`Local track: ${track.kind}`, track);
-      });
-    }
-
-    if (remoteStream) {
-      console.log("Remote Stream:", remoteStream);
-      remoteStream.getTracks().forEach((track) => {
-        console.log(`Remote track: ${track.kind}`, track);
-      });
-      console.log("Remote stream URL:", remoteStream.toURL());
-    }
-  }, [localStream, remoteStream]);
 
   // Handle incoming offer
   const handleOffer = async (offer: RTCSessionDescription, sender: string) => {
@@ -199,6 +179,7 @@ const WebRTCApp = () => {
     return peerConnection;
   };
 
+  // Start a call
   const startCall = async () => {
     if (!localStream || !targetPeer) return;
   
@@ -211,15 +192,19 @@ const WebRTCApp = () => {
       offerToReceiveAudio: 1,
     };
   
-    const offer = await peerConnection.createOffer(offerOptions);
-    await peerConnection.setLocalDescription(offer);
-    console.log("Offer created and set.");
-  
-    // Send the offer to the target peer
-    socket.emit("offer", { target: targetPeer, offer });
-  
-    setIsCalling(true);
-    console.log(`Calling peer: ${targetPeer}`);
+    try {
+      const offer = await peerConnection.createOffer(offerOptions);
+      await peerConnection.setLocalDescription(offer);
+
+      // Send the offer to the target peer
+      socket.emit("offer", { target: targetPeer, offer });
+      peerConnectionRef.current = peerConnection;
+    
+      setIsCalling(true);
+      console.log(`Calling peer: ${targetPeer}`);
+    } catch (error) {
+      console.error("Error creating or setting offer:", error);
+    }
   };
 
   // Accept a call
@@ -376,4 +361,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default WebRTCApp;
+export default App;
