@@ -69,6 +69,26 @@ const WebRTCApp = () => {
       }
     });
 
+    const getUserMedia = async () => {
+      const constraints = { audio: true, video: false };
+      try {
+        const stream = await mediaDevices.getUserMedia(constraints);
+  
+        if (stream.getAudioTracks().length === 0) {
+          console.error("No audio tracks found.");
+          return;
+        }
+  
+        console.log("Audio track acquired:", stream.getAudioTracks());
+        setLocalStream(stream);
+        console.log("Local stream state updated:", stream);
+      } catch (err) {
+        console.error('Failed to get user media:', err);
+      }
+    };
+
+    getUserMedia()
+
     return () => {
       socket.off("peer-list");
       socket.off("offer");
@@ -79,23 +99,7 @@ const WebRTCApp = () => {
     };
   }, []);
 
-  const getUserMedia = async () => {
-    const constraints = { audio: true, video: false };
-    try {
-      const stream = await mediaDevices.getUserMedia(constraints);
-
-      if (stream.getAudioTracks().length === 0) {
-        console.error("No audio tracks found.");
-        return;
-      }
-
-      console.log("Audio track acquired:", stream.getAudioTracks());
-      setLocalStream(stream);
-      console.log("Local stream state updated:", stream);
-    } catch (err) {
-      console.error('Failed to get user media:', err);
-    }
-  };
+  
 
   useEffect(() => {
     if (inCall && !remoteStream) {
@@ -196,8 +200,6 @@ const WebRTCApp = () => {
   };
 
   const startCall = async () => {
-    getUserMedia();
-
     if (!localStream || !targetPeer) return;
   
     const peerConnection = createPeerConnection(targetPeer);
